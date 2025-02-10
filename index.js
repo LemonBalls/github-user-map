@@ -1,41 +1,36 @@
 const axios = require("axios");
 const fs = require("fs");
 
-// Replace with your GitHub personal access token
+
+// https://stackoverflow.com/questions/20547198/how-can-i-filter-all-github-pull-requests-for-a-specific-target-branch
+
 const GITHUB_TOKEN = "";
-// Replace with the owner and repo name
-// const OWNER = "LemonBalls";
-// const REPO = "gd-astro";
 
-const OWNER = "nodejs";
-const REPO = "node";
+const headers = {
+        // Authorization: `token ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+      }
 
-const GITHUB_API_URL = `https://api.github.com/repos/${OWNER}/${REPO}/commits`;
+async function getPRs(REPO, AUTHORS) {
 
-async function getCommitUsernames() {
+const dateFilter = '+merged:>2024-11-01'
+const authorsFilter = AUTHORS.flat(Infinity).map(author => String(`+author:${author}`).replace(/,/g, '')).join('');
+
+//  const QUERY = `is:pr+is:merged+merged:>2024-11-01+author:joyeecheung+author:nektro+base:main&per_page=100`
+
+  const QUERY = `is:pr+is:merged${dateFilter}${authorsFilter}+base:main&per_page=100`
+  const GITHUB_API_URL = `https://api.github.com/search/issues?q=repo:${REPO.owner}/${REPO.repository}+${QUERY}`
+
   try {
     const response = await axios.get(GITHUB_API_URL, {
-      headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github.v3+json",
-      },
+      headers,
     });
 
-    const commits = response.data;
+    // Returns params items & total_count
+    const results = response.data;
 
-    console.log(commits);
-    const usernames = commits.map((commit) =>
-      commit.author ? commit.author.login : "Unknown"
-    );
+    return `${REPO.repository} PRs: ${results.total_count}`
 
-    var uniq = [...new Set(usernames)];
-
-    console.log("Usernames of commit authors:");
-    console.log(uniq);
-
-    // Optionally, save the usernames to a file
-    // fs.writeFileSync("usernames.txt", usernames.join("\n"));
-    // console.log("Usernames have been saved to usernames.txt");
   } catch (error) {
     console.error(
       "Error fetching commit data:",
@@ -44,4 +39,16 @@ async function getCommitUsernames() {
   }
 }
 
-getCommitUsernames();
+const repositories = [
+  {owner:'nodejs', repository: 'node'}, 
+  {owner:'nodejs', repository: 'node-gyp'}
+]
+
+const authors = ['joyeecheung', 'nektro', 'cclauss']
+
+repositories.forEach((repo) => {
+  getPRs(repo, authors).then((result) => console.log(result))
+})
+
+    // Optionally, save the usernames to a file
+    // fs.writeFileSync("counts.txt", counts.join("\n"));
